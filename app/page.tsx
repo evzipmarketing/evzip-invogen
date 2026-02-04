@@ -101,13 +101,20 @@ export default function Home() {
       }
 
       const blob = await res.blob();
-      const dateStr = new Date().toISOString().slice(0, 10);
+      const contentDisposition = res.headers.get("Content-Disposition");
+      const filenameMatch = contentDisposition?.match(/filename="?([^";\n]+)"?/);
+      const filename = filenameMatch?.[1] ?? `EVZIP_Invoices_${new Date().toISOString().slice(0, 10)}.zip`;
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `EVZIP_Invoices_${dateStr}.zip`;
+      a.download = filename;
+      a.style.display = "none";
+      document.body.appendChild(a);
       a.click();
-      URL.revokeObjectURL(url);
+      setTimeout(() => {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }, 100);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Generation failed");
     } finally {

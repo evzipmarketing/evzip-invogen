@@ -35,8 +35,8 @@ function parseDate(val: unknown): Date | null {
     return isNaN(d.getTime()) ? null : d;
   }
 
-  // DD-MM-YYYY or DD/MM/YYYY (JavaScript can misparse these)
-  const dmy = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+  // DD-MM-YYYY or DD/MM/YYYY with optional time (01-11-2025 00:07)
+  const dmy = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
   if (dmy) {
     const [, day, month, year] = dmy;
     const d = new Date(Number(year), Number(month) - 1, Number(day));

@@ -20,21 +20,56 @@ export function computePercent(amount: number, base: number): string {
   return `${rounded}%`;
 }
 
+/**
+ * Parse date from source formats. Source file uses DD-MM-YYYY HH:MM (India/UK).
+ * Must parse DD-MM/DD/MM before native Date, which treats "01-11-2025" as MM-DD (Jan 11).
+ */
+function parseDateForInvoice(val: unknown): Date | null {
+  if (val === null || val === undefined || val === "") return null;
+  if (val instanceof Date && !isNaN(val.getTime())) return val;
+  const str = String(val).trim();
+  if (!str) return null;
+
+  // Excel serial (number or numeric string like "44927")
+  const num = Number(str.replace(/,/g, ""));
+  if (Number.isFinite(num) && num > 1000) {
+    const d = new Date((num - 25569) * 86400 * 1000);
+    if (!isNaN(d.getTime())) return d;
+  }
+
+  // DD-MM-YYYY or DD/MM/YYYY with optional time (01-11-2025 00:07, 01/11/2025 10:30 AM)
+  // Source uses this format - first is day, second is month
+  const dmy = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+  if (dmy) {
+    const [, day, month, year] = dmy;
+    const date = new Date(Number(year), Number(month) - 1, Number(day));
+    if (!isNaN(date.getTime())) return date;
+  }
+
+  // YYYY-MM-DD (ISO)
+  const iso = str.match(/^(\d{4})[\/\-](\d{2})[\/\-](\d{2})/);
+  if (iso) {
+    const [, y, m, d] = iso;
+    const date = new Date(Number(y), Number(m) - 1, Number(d));
+    if (!isNaN(date.getTime())) return date;
+  }
+
+  // Fallback: MM/DD/YYYY HH:MM:SS AM/PM (Excel US format)
+  const d = new Date(str);
+  return isNaN(d.getTime()) ? null : d;
+}
+
 export function formatInvoiceDate(raw: unknown): string {
   if (raw === null || raw === undefined) return "";
-  const s = String(raw).trim();
-  // If already contains a month name, keep as-is (matches sample like "31 Nov 2025")
-  if (/[A-Za-z]{3,}/.test(s)) return s;
+  const d = parseDateForInvoice(raw);
+  if (!d) return String(raw).trim();
 
-  const d = new Date(s);
-  if (Number.isNaN(d.getTime())) return s;
-
+  // Output: 01 Nov 2025 (ignore time)
   const parts = new Intl.DateTimeFormat("en-GB", {
     day: "2-digit",
     month: "short",
     year: "numeric",
   }).formatToParts(d);
-
   const day = parts.find((p) => p.type === "day")?.value ?? "";
   const month = parts.find((p) => p.type === "month")?.value ?? "";
   const year = parts.find((p) => p.type === "year")?.value ?? "";
