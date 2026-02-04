@@ -8,6 +8,12 @@
   "theme_color": "#151438",
   "icons": [
     {
+      "src": "/favicon.png",
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
       "src": "/EVZIP_logo.svg",
       "sizes": "any",
       "type": "image/svg+xml",

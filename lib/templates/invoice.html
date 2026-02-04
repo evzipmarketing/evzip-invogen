@@ -4,10 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Invoice {{invoice_no}}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700;800&display=swap" rel="stylesheet">
   <style>
     @page { size: A4; margin: 18mm; }
     * { box-sizing: border-box; }
-    body { font-family: Arial, sans-serif; font-size: 11px; color: #000; line-height: 1.4; margin: 0; padding: 0; }
+    body { font-family: 'Roboto', Arial, sans-serif; font-size: 11px; color: #000; line-height: 1.4; margin: 0; padding: 0; }
     .page { position: relative; min-height: 100%; padding-bottom: 55mm; }
     .top-row { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 8px; }
     .logo { height: 54px; width: 54px; }
@@ -79,6 +80,7 @@
       <div class="line"><span class="label">Invoice date:</span> {{invoice_date_formatted}}</div>
       <div class="line"><span class="label">Place of supply (Name of state):</span> {{place_of_supply}}</div>
       <div class="line"><span class="label">Category of services:</span> {{category_of_services}}</div>
+      <div class="line"><span class="label">HSN Code:</span> 996601</div>
     </div>
 
     <div class="table-wrap">

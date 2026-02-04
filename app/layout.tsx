@@ -5,6 +5,9 @@ export const metadata: Metadata = {
   title: "EVZIP - Invogen",
   description: "Bulk invoice PDF generator for EVZIP rides",
   manifest: "/manifest.json",
+  icons: {
+    icon: "/favicon.png",
+  },
 };
 
 export const viewport: Viewport = {
