@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Invoice {{invoice_no}}</title>
+  <style>
+    @page { size: A4; margin: 18mm; }
+    * { box-sizing: border-box; }
+    body { font-family: Arial, sans-serif; font-size: 11px; color: #000; line-height: 1.4; margin: 0; padding: 0; }
+    .page { position: relative; min-height: 100%; padding-bottom: 55mm; }
+    .top-row { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 8px; }
+    .logo { height: 54px; width: 54px; }
+    .title { text-align: center; flex: 1; font-size: 18px; letter-spacing: 0.5px; font-weight: 700; color: #1a6fb3; margin-top: 6px; }
+    .spacer { width: 54px; }
+    .two-col { display: flex; justify-content: space-between; gap: 40px; margin-top: 16px; }
+    .left, .right { flex: 1; }
+    .label { font-weight: 700; }
+    .block-title { font-weight: 700; margin-bottom: 6px; text-align: center; }
+    .issued-by { text-align: left; }
+    .issued-by .header { text-align: center; margin-bottom: 6px; }
+    .line { margin: 2px 0; }
+
+    .meta { margin-top: 18px; }
+    .meta .line { margin: 10px 0; }
+
+    .table-wrap { margin-top: 16px; }
+    table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    th, td { border: 1px solid #6b91c8; padding: 8px 10px; }
+    th { background: #4f89c8; color: #fff; font-weight: 700; font-size: 10px; text-transform: uppercase; }
+    td { font-size: 11px; }
+    .col-desc { width: 55%; }
+    .col-qty { width: 15%; text-align: center; }
+    .col-amt { width: 30%; text-align: right; }
+
+    .totals { margin-top: 10px; width: 45%; margin-left: auto; font-size: 11px; }
+    .totals .row { display: flex; justify-content: space-between; padding: 2px 0; }
+    /* Match rest of invoice typography (no heavy letter spacing) */
+    .totals .label-spaced { letter-spacing: 0.5px; font-weight: 700; }
+    .totals .amount { width: 120px; text-align: right; }
+    .totals .grand { margin-top: 4px; }
+    .totals .grand .label-spaced { letter-spacing: 0.5px; }
+    .payable { margin-top: 8px; display: flex; justify-content: space-between; font-weight: 800; }
+    .payable .label-spaced { letter-spacing: 0.5px; white-space: nowrap; }
+    .payable .amount { white-space: nowrap; }
+
+    .note { margin-top: 26px; font-style: italic; font-size: 10px; }
+
+    .footer { position: fixed; left: 18mm; right: 18mm; bottom: 18mm; text-align: center; font-size: 9px; }
+    .footer .company { font-style: italic; font-weight: 700; white-space: nowrap; }
+    .footer .muted { margin-top: 6px; }
+    .footer .site { margin-top: 6px; font-weight: 700; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="top-row">
+      <div class="spacer"></div>
+      <div class="title">TAX INVOICE</div>
+      <img src="{{logoDataUri}}" alt="EVZIP" class="logo" />
+    </div>
+
+    <div class="two-col">
+      <div class="left">
+        <div class="line"><span class="label">Customer Name:</span> {{customer_name}}</div>
+        <div class="line"><span class="label">Customer ID:</span> {{customer_id}}</div>
+      </div>
+      <div class="right issued-by">
+        <div class="header" style="text-align:left;">Invoice issued by :</div>
+        <div class="line"><span class="label">EVZIP MOBILITY PRIVATE LIMITED</span></div>
+        <div class="line">Plot No 8B, Godavari Gardens, Yapral,</div>
+        <div class="line">Secunderabad, Hyderabad, Telangana, India-500087</div>
+        <div class="line"><span class="label">GSTIN:</span> 36AAHCE7709C1ZQ</div>
+      </div>
+    </div>
+
+    <div class="meta">
+      <div class="line"><span class="label">Invoice number:</span> {{invoice_no}}</div>
+      <div class="line"><span class="label">Invoice date:</span> {{invoice_date_formatted}}</div>
+      <div class="line"><span class="label">Place of supply (Name of state):</span> {{place_of_supply}}</div>
+      <div class="line"><span class="label">Category of services:</span> {{category_of_services}}</div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th class="col-desc">DESCRIPTION</th>
+            <th class="col-qty">QTY</th>
+            <th class="col-amt">AMOUNT</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="col-desc">{{service_description}}</td>
+            <td class="col-qty">{{qty}}</td>
+            <td class="col-amt">{{line_amount_no_decimals}}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="totals">
+      <div class="row"><div class="label-spaced">SUBTOTAL</div><div class="amount">{{subtotal}}</div></div>
+      <div class="row"><div class="label-spaced">CGST {{cgst_percent}}</div><div class="amount">{{cgst_amount}}</div></div>
+      <div class="row"><div class="label-spaced">SGST {{sgst_percent}}</div><div class="amount">{{sgst_amount}}</div></div>
+      <div class="row grand"><div class="label-spaced">TOTAL</div><div class="amount">{{total}}</div></div>
+      <div class="payable"><div class="label-spaced">TOTAL AMOUNT PAYABLE</div><div class="amount">{{total_payable}}</div></div>
+    </div>
+
+    <div class="note">
+      This is an electronically generated invoice and does not require a digital signature.
+    </div>
+  </div>
+
+  <div class="footer">
+    <div class="company">EVZIP MOBILITY PRIVATE LIMITED, Plot No 8B, Godavari Gardens, Yapral, Secunderabad, Hyderabad, Telangana, India-500087</div>
+    <div class="muted">ISO 9001:2015 Certified | Startup India Recognised</div>
+    <div class="site">www.evzip.in</div>
+  </div>
+</body>
+</html>
