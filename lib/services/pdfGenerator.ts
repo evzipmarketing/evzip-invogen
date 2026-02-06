@@ -62,6 +62,19 @@ export async function generateInvoicePdfs(
         // Optional fields with defaults to match sample layout
         customer_id: pickString((row as any).customer_id, ""),
         place_of_supply: pickString((row as any).place_of_supply, "Telangana"),
+        issuer_company: pickString(
+          (row as any).issuer_company,
+          "EVZIP MOBILITY PRIVATE LIMITED"
+        ),
+        issuer_address_line1: pickString(
+          (row as any).issuer_address_line1,
+          "Plot 8/B, Godavari Gardens, Generals Road,"
+        ),
+        issuer_address_line2: pickString(
+          (row as any).issuer_address_line2,
+          "Yapral, Secunderabad, Telangana, India-500087"
+        ),
+        issuer_gstin: pickString((row as any).issuer_gstin, "36AAHCE7709C1ZQ"),
         category_of_services: pickString(
           (row as any).category_of_services,
           "Passenger Transport Services"

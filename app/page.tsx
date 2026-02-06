@@ -17,15 +17,42 @@ type UploadResponse = {
 };
 
 export default function Home() {
+  const [activeTab, setActiveTab] = useState<"bulk" | "single">("bulk");
+
   const [file, setFile] = useState<File | null>(null);
   const fileRef = useRef<File | null>(null);
   const [sheetIndex, setSheetIndex] = useState(0);
   const [uploadData, setUploadData] = useState<UploadResponse | null>(null);
   const [mappingOverride, setMappingOverride] = useState<Record<string, string>>({});
+  const [bulkIssuerKey, setBulkIssuerKey] = useState<"telangana" | "andhra_pradesh">("telangana");
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [singleForm, setSingleForm] = useState({
+    invoice_date: "",
+    invoice_no: "",
+    place_of_supply: "Telangana",
+    customer_name: "",
+    customer_id: "",
+    issuer_key: "telangana" as "telangana" | "andhra_pradesh",
+    category_of_services: "Passenger Transport Services",
+    service_description: "Transport Service using electric vehicle",
+    qty: "1",
+    net_fare: "",
+    CGST: "",
+    SGST: "",
+    total_fare: "",
+    total_payable: "",
+  });
+  const [singleTouched, setSingleTouched] = useState({
+    CGST: false,
+    SGST: false,
+    total_fare: false,
+    total_payable: false,
+  });
+  const [singleGenerating, setSingleGenerating] = useState(false);
 
   // Native DOM listener - React's onChange may not fire in embedded browsers (e.g. Cursor Simple Browser)
   useEffect(() => {
@@ -86,6 +113,7 @@ export default function Home() {
       const formData = new FormData();
       formData.append("file", f);
       formData.append("sheetIndex", String(sheetIndex));
+      formData.append("issuer_key", bulkIssuerKey);
       if (Object.keys(mappingOverride).length > 0) {
         formData.append("mapping", JSON.stringify(mappingOverride));
       }
@@ -122,6 +150,74 @@ export default function Home() {
     }
   };
 
+  const recalcSingle = (next: typeof singleForm) => {
+    const net = Number(String(next.net_fare ?? "").replace(/,/g, "").trim());
+    const netOk = Number.isFinite(net) ? net : 0;
+    const defaultTax = Math.round(netOk * 0.025 * 100) / 100; // 2.5%
+
+    const cgst = singleTouched.CGST
+      ? next.CGST
+      : (netOk ? String(defaultTax) : "");
+    const sgst = singleTouched.SGST
+      ? next.SGST
+      : (netOk ? String(defaultTax) : "");
+
+    const cgstNum = Number(String(cgst ?? "").replace(/,/g, "").trim());
+    const sgstNum = Number(String(sgst ?? "").replace(/,/g, "").trim());
+    const computedTotal = (Number.isFinite(netOk) ? netOk : 0) + (Number.isFinite(cgstNum) ? cgstNum : 0) + (Number.isFinite(sgstNum) ? sgstNum : 0);
+
+    const totalFare = singleTouched.total_fare ? next.total_fare : (netOk ? String(Math.round(computedTotal * 100) / 100) : "");
+    const totalPayable = singleTouched.total_payable ? next.total_payable : totalFare;
+
+    return { ...next, CGST: cgst, SGST: sgst, total_fare: totalFare, total_payable: totalPayable };
+  };
+
+  const handleCreateInvoice = async () => {
+    setSingleGenerating(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/invoice", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...singleForm,
+          net_fare: Number(String(singleForm.net_fare ?? "").replace(/,/g, "").trim()),
+          CGST: Number(String(singleForm.CGST ?? "").replace(/,/g, "").trim()),
+          SGST: Number(String(singleForm.SGST ?? "").replace(/,/g, "").trim()),
+          total_fare: Number(String(singleForm.total_fare ?? "").replace(/,/g, "").trim()),
+          total_payable: Number(String(singleForm.total_payable ?? "").replace(/,/g, "").trim()),
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Invoice generation failed");
+      }
+
+      const blob = await res.blob();
+      const contentDisposition = res.headers.get("Content-Disposition");
+      const filenameMatch = contentDisposition?.match(/filename=\"?([^\";\n]+)\"?/);
+      const filename =
+        filenameMatch?.[1] ?? `EVZIP_INV_${singleForm.invoice_no || "invoice"}.pdf`;
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      a.style.display = "none";
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }, 100);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Invoice generation failed");
+    } finally {
+      setSingleGenerating(false);
+    }
+  };
+
   const columns = uploadData?.previewRows?.[0]
     ? Object.keys(uploadData.previewRows[0])
     : [];
@@ -154,6 +250,33 @@ export default function Home() {
           </div>
         )}
 
+        <div className="mb-6 flex gap-2">
+          <button
+            type="button"
+            onClick={() => setActiveTab("bulk")}
+            className={`rounded px-4 py-2 text-sm font-medium ${
+              activeTab === "bulk"
+                ? "bg-[#151438] text-white"
+                : "bg-white text-gray-800 border border-gray-300 hover:bg-gray-50"
+            }`}
+          >
+            Bulk generator
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("single")}
+            className={`rounded px-4 py-2 text-sm font-medium ${
+              activeTab === "single"
+                ? "bg-[#151438] text-white"
+                : "bg-white text-gray-800 border border-gray-300 hover:bg-gray-50"
+            }`}
+          >
+            Invoice creator
+          </button>
+        </div>
+
+        {activeTab === "bulk" && (
+          <>
         {/* Step 1: Upload */}
         <section className="mb-8 rounded-lg bg-white p-6 shadow-sm">
           <h2 className="mb-4 text-lg font-semibold text-gray-900">
@@ -421,6 +544,21 @@ export default function Home() {
               Generate {uploadData.validCount} PDF invoice(s) and download as
               ZIP. {uploadData.invalidCount > 0 && "Failed rows will be included in failed_rows.csv."}
             </p>
+            <div className="mb-4">
+              <label className="mb-1 block text-sm font-medium text-gray-700">
+                Invoice issued by
+              </label>
+              <select
+                value={bulkIssuerKey}
+                onChange={(e) =>
+                  setBulkIssuerKey(e.target.value as "telangana" | "andhra_pradesh")
+                }
+                className="w-full max-w-xs rounded border border-gray-300 px-3 py-2 text-sm"
+              >
+                <option value="telangana">Telangana</option>
+                <option value="andhra_pradesh">Andhra Pradesh</option>
+              </select>
+            </div>
             <button
               onClick={handleGenerate}
               disabled={generating}
@@ -428,6 +566,239 @@ export default function Home() {
             >
               {generating ? "Generating..." : "Generate & Download ZIP"}
             </button>
+          </section>
+        )}
+          </>
+        )}
+
+        {activeTab === "single" && (
+          <section className="mb-8 rounded-lg bg-white p-6 shadow-sm">
+            <h2 className="mb-4 text-lg font-semibold text-gray-900">
+              Invoice creator
+            </h2>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">
+                  Invoice Date
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="date"
+                    value={
+                      singleForm.invoice_date.match(/^\d{4}-\d{2}-\d{2}/)?.[0] ?? ""
+                    }
+                    onChange={(e) =>
+                      setSingleForm((p) => ({ ...p, invoice_date: e.target.value }))
+                    }
+                    className="flex-1 rounded border border-gray-300 px-3 py-2 text-sm"
+                  />
+                  <input
+                    type="text"
+                    value={
+                      singleForm.invoice_date.match(/^\d{4}-\d{2}-\d{2}/)
+                        ? ""
+                        : singleForm.invoice_date
+                    }
+                    onChange={(e) =>
+                      setSingleForm((p) => ({ ...p, invoice_date: e.target.value }))
+                    }
+                    placeholder="Or type: 01-11-2025"
+                    className="flex-1 rounded border border-gray-300 px-3 py-2 text-sm"
+                  />
+                </div>
+                <p className="mt-1 text-xs text-gray-500">
+                  Pick a date or type manually (DD-MM-YYYY)
+                </p>
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">
+                  Invoice No
+                </label>
+                <input
+                  value={singleForm.invoice_no}
+                  onChange={(e) =>
+                    setSingleForm((p) => ({ ...p, invoice_no: e.target.value }))
+                  }
+                  placeholder="EZ25112001"
+                  className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">
+                  Place of supply
+                </label>
+                <input
+                  value={singleForm.place_of_supply}
+                  onChange={(e) =>
+                    setSingleForm((p) => ({ ...p, place_of_supply: e.target.value }))
+                  }
+                  className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">
+                  Customer name
+                </label>
+                <input
+                  value={singleForm.customer_name}
+                  onChange={(e) =>
+                    setSingleForm((p) => ({ ...p, customer_name: e.target.value }))
+                  }
+                  className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">
+                  Customer ID (optional)
+                </label>
+                <input
+                  value={singleForm.customer_id}
+                  onChange={(e) =>
+                    setSingleForm((p) => ({ ...p, customer_id: e.target.value }))
+                  }
+                  className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">
+                  Invoice issued by
+                </label>
+                <select
+                  value={singleForm.issuer_key}
+                  onChange={(e) =>
+                    setSingleForm((p) => ({
+                      ...p,
+                      issuer_key: e.target.value as any,
+                    }))
+                  }
+                  className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
+                >
+                  <option value="telangana">Telangana</option>
+                  <option value="andhra_pradesh">Andhra Pradesh</option>
+                </select>
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="mb-1 block text-sm font-medium text-gray-700">
+                  Description (Service)
+                </label>
+                <input
+                  value={singleForm.service_description}
+                  onChange={(e) =>
+                    setSingleForm((p) => ({ ...p, service_description: e.target.value }))
+                  }
+                  className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">
+                  Qty
+                </label>
+                <input
+                  value={singleForm.qty}
+                  onChange={(e) =>
+                    setSingleForm((p) => ({ ...p, qty: e.target.value }))
+                  }
+                  className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">
+                  Amount
+                </label>
+                <input
+                  value={singleForm.net_fare}
+                  onChange={(e) => {
+                    const next = { ...singleForm, net_fare: e.target.value };
+                    setSingleForm(recalcSingle(next));
+                  }}
+                  inputMode="decimal"
+                  className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">
+                  CGST (2.5%)
+                </label>
+                <input
+                  value={singleForm.CGST}
+                  onChange={(e) => {
+                    setSingleTouched((t) => ({ ...t, CGST: true }));
+                    const next = { ...singleForm, CGST: e.target.value };
+                    setSingleForm(recalcSingle(next));
+                  }}
+                  inputMode="decimal"
+                  className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">
+                  SGST (2.5%)
+                </label>
+                <input
+                  value={singleForm.SGST}
+                  onChange={(e) => {
+                    setSingleTouched((t) => ({ ...t, SGST: true }));
+                    const next = { ...singleForm, SGST: e.target.value };
+                    setSingleForm(recalcSingle(next));
+                  }}
+                  inputMode="decimal"
+                  className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">
+                  Total
+                </label>
+                <input
+                  value={singleForm.total_fare}
+                  onChange={(e) => {
+                    setSingleTouched((t) => ({ ...t, total_fare: true }));
+                    const next = { ...singleForm, total_fare: e.target.value };
+                    setSingleForm(recalcSingle(next));
+                  }}
+                  inputMode="decimal"
+                  className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">
+                  Total Amount Payable
+                </label>
+                <input
+                  value={singleForm.total_payable}
+                  onChange={(e) => {
+                    setSingleTouched((t) => ({ ...t, total_payable: true }));
+                    setSingleForm((p) => ({ ...p, total_payable: e.target.value }));
+                  }}
+                  inputMode="decimal"
+                  className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
+                />
+              </div>
+            </div>
+
+            <div className="mt-6 flex gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setSingleTouched({ CGST: false, SGST: false, total_fare: false, total_payable: false });
+                  setSingleForm((p) => recalcSingle(p));
+                }}
+                className="rounded border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-800 hover:bg-gray-50"
+              >
+                Recalculate
+              </button>
+              <button
+                type="button"
+                onClick={handleCreateInvoice}
+                disabled={singleGenerating}
+                className="rounded bg-[#151438] px-6 py-2 text-sm font-medium text-white hover:bg-[#1e1d4a] disabled:opacity-50"
+              >
+                {singleGenerating ? "Generating..." : "Generate & Download PDF"}
+              </button>
+            </div>
           </section>
         )}
 

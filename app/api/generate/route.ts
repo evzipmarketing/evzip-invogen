@@ -8,6 +8,7 @@ import {
 import { generateInvoicePdfs } from "@/lib/services/pdfGenerator";
 import { createZipStream } from "@/lib/services/zipService";
 import { MAX_FILE_SIZE_MB } from "@/lib/constants";
+import { ISSUERS } from "@/lib/issuers";
 
 export const dynamic = "force-dynamic";
 
@@ -73,7 +74,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const pdfs = await generateInvoicePdfs(validRows);
+    const issuerKey = (formData.get("issuer_key") as string) || "telangana";
+    const issuer =
+      issuerKey === "andhra_pradesh"
+        ? ISSUERS.andhra_pradesh
+        : ISSUERS.telangana;
+
+    const rowsWithIssuer = validRows.map((row) => ({ ...row, ...issuer }));
+
+    const pdfs = await generateInvoicePdfs(rowsWithIssuer);
 
     const batchId = Date.now().toString(36);
     const dateStr = new Date().toISOString().slice(0, 10);
