@@ -58,9 +58,12 @@ export async function POST(req: NextRequest) {
     };
 
     const [pdf] = await generateInvoicePdfs([row]);
-    const filename = pdf?.filename || `EVZIP_INV_${invoice_no}.pdf`;
+    if (!pdf) {
+      return Response.json({ error: "Failed to generate PDF" }, { status: 500 });
+    }
+    const filename = pdf.filename || `EVZIP_INV_${invoice_no}.pdf`;
 
-    return new Response(pdf.buffer, {
+    return new Response(new Uint8Array(pdf.buffer), {
       headers: {
         "Content-Type": "application/pdf",
         "Content-Disposition": `attachment; filename="${filename}"`,
