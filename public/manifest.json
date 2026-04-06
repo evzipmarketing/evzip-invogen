@@ -1,0 +1,23 @@
+{
+  "name": "EVZIP - Invogen",
+  "short_name": "Invogen",
+  "description": "Bulk invoice PDF generator for EVZIP rides",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#151438",
+  "icons": [
+    {
+      "src": "/favicon.png",
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/EVZIP_logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

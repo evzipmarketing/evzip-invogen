@@ -1,0 +1,14 @@
+# EVZIP - Invogen: One-click deploy to Render
+# After pushing to GitHub: dashboard.render.com → New → Blueprint → Connect repo
+
+services:
+  - type: web
+    name: evzip-invogen
+    runtime: node
+    plan: free
+
+    buildCommand: bash render-build.sh
+    startCommand: npm start
+
+    # Deploy on every push to main
+    autoDeployTrigger: commit
