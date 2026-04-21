@@ -27,6 +27,8 @@ export default function Home() {
   const [bulkIssuerKey, setBulkIssuerKey] = useState<"telangana" | "andhra_pradesh">("telangana");
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState(0);
+  const [bulkStatus, setBulkStatus] = useState("");
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -71,6 +73,35 @@ export default function Home() {
     return () => input.removeEventListener("change", handler);
   }, []);
 
+  useEffect(() => {
+    if (!generating) return;
+
+    setBulkProgress(8);
+    setBulkStatus("Preparing rows...");
+
+    const startedAt = Date.now();
+    const timer = setInterval(() => {
+      const elapsed = Date.now() - startedAt;
+
+      setBulkProgress((prev) => {
+        const cap = 92;
+        if (prev >= cap) return prev;
+        const step = elapsed > 15000 ? 1 : 2;
+        return Math.min(cap, prev + step);
+      });
+
+      if (elapsed > 20000) {
+        setBulkStatus("Finalizing ZIP...");
+      } else if (elapsed > 8000) {
+        setBulkStatus("Generating invoice PDFs...");
+      } else {
+        setBulkStatus("Preparing rows...");
+      }
+    }, 700);
+
+    return () => clearInterval(timer);
+  }, [generating]);
+
   const handleUpload = async () => {
     const f = fileRef.current ?? file;
     if (!f) return;
@@ -108,6 +139,8 @@ export default function Home() {
     const f = fileRef.current ?? file;
     if (!f) return;
     setGenerating(true);
+    setBulkProgress(5);
+    setBulkStatus("Uploading source file...");
     setError(null);
     try {
       const formData = new FormData();
@@ -128,6 +161,8 @@ export default function Home() {
         throw new Error(data.error || "Generation failed");
       }
 
+      setBulkProgress(96);
+      setBulkStatus("Preparing download...");
       const blob = await res.blob();
       const contentDisposition = res.headers.get("Content-Disposition");
       const filenameMatch = contentDisposition?.match(/filename="?([^";\n]+)"?/);
@@ -139,6 +174,8 @@ export default function Home() {
       a.style.display = "none";
       document.body.appendChild(a);
       a.click();
+      setBulkProgress(100);
+      setBulkStatus("Download started");
       setTimeout(() => {
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
@@ -147,6 +184,10 @@ export default function Home() {
       setError(err instanceof Error ? err.message : "Generation failed");
     } finally {
       setGenerating(false);
+      setTimeout(() => {
+        setBulkProgress(0);
+        setBulkStatus("");
+      }, 1200);
     }
   };
 
@@ -592,6 +633,20 @@ export default function Home() {
             >
               {generating ? "Generating..." : "Generate & Download ZIP"}
             </button>
+            {generating && (
+              <div className="mt-4 max-w-xl">
+                <div className="mb-1 flex items-center justify-between text-xs text-gray-700">
+                  <span>{bulkStatus || "Generating..."}</span>
+                  <span>{bulkProgress}%</span>
+                </div>
+                <div className="h-2 w-full overflow-hidden rounded bg-gray-200">
+                  <div
+                    className="h-full rounded bg-[#151438] transition-all duration-500"
+                    style={{ width: `${bulkProgress}%` }}
+                  />
+                </div>
+              </div>
+            )}
           </section>
         )}
           </>
