@@ -30,6 +30,7 @@ export default function Home() {
   const [bulkProgress, setBulkProgress] = useState(0);
   const [bulkStatus, setBulkStatus] = useState("");
   const [bulkElapsedMs, setBulkElapsedMs] = useState(0);
+  const [bulkLastRunSummary, setBulkLastRunSummary] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -148,9 +149,11 @@ export default function Home() {
   const handleGenerate = async () => {
     const f = fileRef.current ?? file;
     if (!f) return;
+    const generationStartedAt = Date.now();
     setGenerating(true);
     setBulkProgress(5);
     setBulkStatus("Uploading source file...");
+    setBulkLastRunSummary(null);
     setError(null);
     try {
       const formData = new FormData();
@@ -186,6 +189,12 @@ export default function Home() {
       a.click();
       setBulkProgress(100);
       setBulkStatus("Download started");
+      const totalInvoices = uploadData?.validCount ?? 0;
+      const label = totalInvoices === 1 ? "invoice" : "invoices";
+      const totalElapsedMs = Date.now() - generationStartedAt;
+      setBulkLastRunSummary(
+        `Batch completed in ${formatElapsed(totalElapsedMs)}. ${totalInvoices} ${label} created and downloaded.`
+      );
       setTimeout(() => {
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
@@ -658,6 +667,11 @@ export default function Home() {
                     style={{ width: `${bulkProgress}%` }}
                   />
                 </div>
+              </div>
+            )}
+            {!generating && bulkLastRunSummary && (
+              <div className="mt-4 max-w-xl rounded border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
+                {bulkLastRunSummary}
               </div>
             )}
           </section>
