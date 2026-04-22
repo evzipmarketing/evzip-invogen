@@ -29,6 +29,7 @@ export default function Home() {
   const [generating, setGenerating] = useState(false);
   const [bulkProgress, setBulkProgress] = useState(0);
   const [bulkStatus, setBulkStatus] = useState("");
+  const [bulkElapsedMs, setBulkElapsedMs] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -78,10 +79,12 @@ export default function Home() {
 
     setBulkProgress(8);
     setBulkStatus("Preparing rows...");
+    setBulkElapsedMs(0);
 
     const startedAt = Date.now();
     const timer = setInterval(() => {
       const elapsed = Date.now() - startedAt;
+      setBulkElapsedMs(elapsed);
 
       setBulkProgress((prev) => {
         const cap = 92;
@@ -101,6 +104,13 @@ export default function Home() {
 
     return () => clearInterval(timer);
   }, [generating]);
+
+  const formatElapsed = (ms: number) => {
+    const totalSeconds = Math.floor(ms / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes}:${String(seconds).padStart(2, "0")}`;
+  };
 
   const handleUpload = async () => {
     const f = fileRef.current ?? file;
@@ -638,6 +648,9 @@ export default function Home() {
                 <div className="mb-1 flex items-center justify-between text-xs text-gray-700">
                   <span>{bulkStatus || "Generating..."}</span>
                   <span>{bulkProgress}%</span>
+                </div>
+                <div className="mb-2 text-xs text-gray-600">
+                  Time elapsed: {formatElapsed(bulkElapsedMs)}
                 </div>
                 <div className="h-2 w-full overflow-hidden rounded bg-gray-200">
                   <div
